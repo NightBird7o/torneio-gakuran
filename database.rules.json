@@ -1,0 +1,10 @@
+{
+  "rules": {
+    "gakuran": {
+      "current": {
+        ".read": true,
+        ".write": "auth != null && auth.uid === 'COLE_SEU_UID_AQUI'"
+      }
+    }
+  }
+}
