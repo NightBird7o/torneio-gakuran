@@ -1,18 +1,19 @@
-// Cole aqui os dados mostrados em: Firebase Console > Configurações do projeto > Seus apps > SDK setup and configuration.
-// O objeto firebaseConfig pode ficar público no GitHub. A proteção contra alterações é feita pelas regras do banco e pelo UID do administrador.
+// Configuração pública do aplicativo Web no Firebase.
+// A segurança das alterações é controlada pelo Firebase Authentication
+// e pelas regras do Realtime Database, não pelo sigilo deste arquivo.
+
 export const firebaseConfig = {
-  apiKey: "COLE_SUA_API_KEY",
-  authDomain: "SEU_PROJETO.firebaseapp.com",
-  databaseURL: "https://SEU_PROJETO-default-rtdb.firebaseio.com",
-  projectId: "SEU_PROJETO",
-  storageBucket: "SEU_PROJETO.firebasestorage.app",
-  messagingSenderId: "COLE_SEU_MESSAGING_SENDER_ID",
-  appId: "COLE_SEU_APP_ID"
+  apiKey: "AIzaSyDfMZZdJN0Jlga1Mq-NAsI_nUGHXSzsOrU",
+  authDomain: "torneio-gakuran.firebaseapp.com",
+  databaseURL: "https://torneio-gakuran-default-rtdb.firebaseio.com",
+  projectId: "torneio-gakuran",
+  storageBucket: "torneio-gakuran.firebasestorage.app",
+  messagingSenderId: "248970334726",
+  appId: "1:248970334726:web:d3d89c0b3ec33101966987"
 };
 
-// Cole o UID da única conta autorizada a administrar o torneio.
-// O mesmo UID deve ser colocado em database.rules.json antes de publicar as regras.
-export const ADMIN_UID = "COLE_SEU_UID_AQUI";
+// Única conta autorizada a administrar o torneio.
+export const ADMIN_UID = "qK3r2XAprGPgHPDWgmkap2QHrfj2";
 
-// Caminho usado no Realtime Database.
+// Caminho compartilhado pelo painel administrativo e pelo placar público.
 export const DATA_PATH = "gakuran/current";
