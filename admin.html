@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="theme-color" content="#0b1428" />
+  <meta name="robots" content="noindex,nofollow" />
+  <title>Administração — Torneio de Gakuran</title>
+  <link rel="stylesheet" href="./styles.css" />
+</head>
+<body>
+  <main class="app-shell">
+    <header class="hero">
+      <div>
+        <p class="eyebrow">Painel protegido do organizador</p>
+        <h1>⚙️ Administração do Torneio</h1>
+        <p class="subtitle">Cadastre de 20 a 40 jogadores, sorteie as classificatórias e administre a tabela principal das oitavas até a final. Cada alteração é publicada no placar dos jogadores em tempo real.</p>
+      </div>
+      <div class="hero-actions">
+        <a class="btn btn-gold" href="./index.html" target="_blank" rel="noopener">👁 Abrir placar público</a>
+        <button class="btn btn-ghost hidden" id="logoutBtn" type="button">Sair da administração</button>
+      </div>
+    </header>
+
+    <div class="live-strip">
+      <span class="live-status"><span class="live-dot" id="liveDot"></span><span id="connectionStatus">Conectando ao placar...</span></span>
+      <span id="lastUpdate">Aguardando primeira atualização</span>
+    </div>
+
+    <section class="panel login-panel" id="loginPanel">
+      <div>
+        <div class="panel-head"><h2>Entrar como administrador</h2></div>
+        <form class="login-form" id="loginForm">
+          <label>E-mail<input id="emailInput" type="email" autocomplete="username" required placeholder="seuemail@exemplo.com" /></label>
+          <label>Senha<input id="passwordInput" type="password" autocomplete="current-password" required placeholder="Sua senha" /></label>
+          <button class="btn btn-primary" type="submit">Entrar</button>
+        </form>
+      </div>
+      <p class="auth-message" id="authMessage">Somente a conta autorizada nas regras do Firebase pode alterar o placar.</p>
+    </section>
+
+    <div class="setup-warning hidden" id="setupWarning">
+      O Firebase ainda não foi configurado. Abra <strong>firebase-config.js</strong>, cole os dados do seu projeto e siga o passo a passo do <strong>README.md</strong>.
+    </div>
+
+    <section class="layout">
+      <aside class="sidebar">
+        <section class="panel">
+          <div class="panel-head">
+            <h2>Adicionar jogador</h2>
+            <span class="counter" id="playerCounter">0/40</span>
+          </div>
+          <form id="playerForm">
+            <div class="field-grid">
+              <label>Nome no Gakuran<input id="gakuranName" maxlength="32" autocomplete="off" placeholder="Ex.: Yoru Yoshino" required /></label>
+              <label>Usuário ou ID do Roblox<input id="robloxName" maxlength="40" autocomplete="off" placeholder="Ex.: Yoru_123" /></label>
+            </div>
+            <div class="form-actions">
+              <button class="btn btn-gold" type="submit" data-admin-control>＋ Adicionar</button>
+              <button class="btn btn-ghost" type="button" id="addExamplesBtn" data-admin-control>Teste rápido</button>
+            </div>
+          </form>
+          <p class="hint">Alterar a lista depois de gerar a tabela apaga os confrontos e resultados atuais.</p>
+        </section>
+
+        <section class="panel">
+          <div class="panel-head">
+            <h2>Participantes</h2>
+            <span class="counter" id="minimumStatus">Mínimo: 20</span>
+          </div>
+          <div class="player-list" id="playerList"></div>
+        </section>
+
+        <section class="panel">
+          <h3>Controle do torneio</h3>
+          <div class="main-actions">
+            <button class="btn btn-primary" id="generateBtn" type="button" data-admin-control>🎲 Sortear e gerar tabela</button>
+            <button class="btn btn-ghost" id="resetResultsBtn" type="button" data-admin-control>↺ Zerar resultados</button>
+            <button class="btn btn-danger" id="clearAllBtn" type="button" data-admin-control>🗑 Limpar tudo</button>
+          </div>
+          <p class="hint">As classificatórias ficam em uma área maior acima da tabela. A tabela principal sempre começa nas oitavas de final, mesmo com 20 a 40 participantes.</p>
+        </section>
+      </aside>
+
+      <section class="content">
+        <div class="status-grid">
+          <article class="standing gold"><span>🥇 Campeão</span><strong id="firstPlace">A definir</strong></article>
+          <article class="standing silver"><span>🥈 Vice-campeão</span><strong id="secondPlace">A definir</strong></article>
+          <article class="standing bronze"><span>🥉 Terceiro lugar</span><strong id="thirdPlace">A definir</strong></article>
+        </div>
+
+        <section class="qualifier-panel" id="qualifierPanel" hidden>
+          <div class="section-toolbar">
+            <div><h2>Classificatórias</h2><p>Etapas ampliadas que definem os 16 jogadores das oitavas.</p></div>
+          </div>
+          <div class="qualifier-rounds" id="qualifierRounds"></div>
+        </section>
+
+        <section class="bracket-panel">
+          <div class="bracket-toolbar">
+            <div><h2>Tabela principal</h2><p id="bracketSummary">A tabela ainda não foi criada.</p></div>
+            <button class="btn btn-small btn-ghost" type="button" id="printBtn">🖨 Imprimir / salvar PDF</button>
+          </div>
+          <div class="bracket-scroll" id="bracketScroll">
+            <div class="bracket-empty" id="bracketEmpty">
+              <div><div class="empty-icon">⚔️</div><h3>A tabela ainda não foi criada</h3><p>Entre como administrador, cadastre de 20 a 40 jogadores e clique em “Sortear e gerar tabela”.</p></div>
+            </div>
+            <div class="bracket-stage" id="bracketStage" hidden><svg class="connections" id="connections" aria-hidden="true"></svg></div>
+          </div>
+        </section>
+      </section>
+    </section>
+  </main>
+
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+  <script type="module" src="./admin.js"></script>
+</body>
+</html>

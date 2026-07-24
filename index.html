@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="theme-color" content="#0b1428" />
+  <meta name="description" content="Placar oficial em tempo real do Torneio Mensal de Gakuran." />
+  <title>Placar ao Vivo — Torneio Mensal de Gakuran</title>
+  <link rel="stylesheet" href="./styles.css" />
+</head>
+<body>
+  <main class="app-shell">
+    <header class="hero">
+      <div>
+        <p class="eyebrow">Placar oficial em tempo real</p>
+        <h1>🏆 Torneio Mensal de Gakuran</h1>
+        <p class="subtitle">Acompanhe as classificatórias, as oitavas, as quartas, as semifinais, a disputa de terceiro lugar e a grande final. Esta página é apenas para visualização.</p>
+      </div>
+      <div class="prize-box" aria-label="Premiação">
+        <div class="prize-row"><span>🥇 1º lugar</span><strong>R$ 50 no Pix</strong></div>
+        <div class="prize-row"><span>🥈 2º lugar</span><strong>R$ 20 no Pix</strong></div>
+        <div class="prize-row"><span>🥉 3º lugar</span><strong>R$ 10 no Pix</strong></div>
+      </div>
+    </header>
+
+    <div class="live-strip">
+      <span class="live-status"><span class="live-dot" id="liveDot"></span><span id="connectionStatus">Conectando ao placar...</span></span>
+      <span id="lastUpdate">Aguardando primeira atualização</span>
+    </div>
+
+    <section class="viewer-content">
+      <div class="status-grid">
+        <article class="standing gold"><span>🥇 Campeão</span><strong id="firstPlace">A definir</strong></article>
+        <article class="standing silver"><span>🥈 Vice-campeão</span><strong id="secondPlace">A definir</strong></article>
+        <article class="standing bronze"><span>🥉 Terceiro lugar</span><strong id="thirdPlace">A definir</strong></article>
+      </div>
+
+      <section class="qualifier-panel" id="qualifierPanel" hidden>
+        <div class="section-toolbar">
+          <div><h2>Classificatórias</h2><p>Etapas ampliadas que definem os 16 jogadores da tabela principal.</p></div>
+        </div>
+        <div class="qualifier-rounds" id="qualifierRounds"></div>
+      </section>
+
+      <section class="bracket-panel">
+        <div class="bracket-toolbar">
+          <div><h2>Tabela principal</h2><p id="bracketSummary">Aguardando o administrador criar a tabela.</p></div>
+          <button class="btn btn-small btn-ghost" type="button" id="printBtn">🖨 Imprimir / salvar PDF</button>
+        </div>
+        <div class="bracket-scroll" id="bracketScroll">
+          <div class="bracket-empty" id="bracketEmpty">
+            <div><div class="empty-icon">⚔️</div><h3>A tabela ainda não foi publicada</h3><p>Assim que o organizador criar os confrontos, eles aparecerão aqui automaticamente. Não é necessário atualizar a página.</p></div>
+          </div>
+          <div class="bracket-stage" id="bracketStage" hidden><svg class="connections" id="connections" aria-hidden="true"></svg></div>
+        </div>
+      </section>
+    </section>
+
+    <section class="rules-card">
+      <strong>Regras principais:</strong> cada confronto tem dois rounds; em caso de empate, acontece um terceiro round de desempate. Se um bug atrapalhar a luta, o round é reiniciado. Não é permitido treinar durante o torneio, todos devem assistir às demais lutas e, antes de cada confronto, os jogadores devem dar Dab juntos.
+    </section>
+
+    <div class="setup-warning hidden" id="setupWarning">
+      O placar ainda não foi conectado ao Firebase. O organizador precisa concluir a configuração descrita no README.md.
+    </div>
+  </main>
+
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+  <script type="module" src="./viewer.js"></script>
+</body>
+</html>
