@@ -3,18 +3,20 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <meta name="theme-color" content="#0b1428" />
-  <meta name="description" content="Placar oficial em tempo real do Torneio Mensal de Gakuran." />
-  <title>Placar ao Vivo — Torneio Mensal de Gakuran</title>
+  <meta name="theme-color" content="#090909" />
+  <meta name="description" content="Inscrições e placar ao vivo do torneio mensal de Gakuran da 〚東京〛M A N J I." />
+  <title>〚東京〛M A N J I — Torneio de Gakuran</title>
   <link rel="stylesheet" href="./styles.css" />
 </head>
 <body>
   <main class="app-shell">
-    <header class="hero">
-      <div>
-        <p class="eyebrow">Placar oficial em tempo real</p>
-        <h1>🏆 Torneio Mensal de Gakuran</h1>
-        <p class="subtitle">Acompanhe as classificatórias, as oitavas, as quartas, as semifinais, a disputa de terceiro lugar e a grande final. Esta página é apenas para visualização.</p>
+    <header class="hero manji-hero">
+      <div class="hero-overlay"></div>
+      <div class="hero-content">
+        <p class="eyebrow">Torneio mensal de Gakuran</p>
+        <h1>〚東京〛M A N J I</h1>
+        <p class="hero-kicker">絆 • 忠誠 • 名誉</p>
+        <p class="subtitle">Inscreva seu personagem e acompanhe cada grupo em tempo real, round por round, até a grande final.</p>
       </div>
       <div class="prize-box" aria-label="Premiação">
         <div class="prize-row"><span>🥇 1º lugar</span><strong>R$ 50 no Pix</strong></div>
@@ -23,10 +25,71 @@
       </div>
     </header>
 
+    <div class="chain-divider" aria-hidden="true"><span>⛓</span><span>⛓</span><span>⛓</span><span>⛓</span><span>⛓</span><span>⛓</span></div>
+
     <div class="live-strip">
       <span class="live-status"><span class="live-dot" id="liveDot"></span><span id="connectionStatus">Conectando ao placar...</span></span>
       <span id="lastUpdate">Aguardando primeira atualização</span>
     </div>
+
+    <section class="registration-panel" id="registrationPanel">
+      <div class="section-toolbar">
+        <div>
+          <p class="eyebrow small">Candidatura oficial</p>
+          <h2>Entre no torneio</h2>
+          <p>Preencha a ficha do seu personagem no Gakuran. O administrador analisará sua candidatura antes de colocar você na tabela.</p>
+        </div>
+        <span class="registration-badge" id="registrationBadge">Verificando inscrições...</span>
+      </div>
+
+      <form class="application-form" id="applicationForm">
+        <label>Nome e sobrenome no Gakuran
+          <input id="applicationName" maxlength="48" autocomplete="off" placeholder="Ex.: Yoru Yoshino" required />
+        </label>
+        <label>Usuário ou ID do Roblox
+          <input id="applicationRoblox" maxlength="48" autocomplete="off" placeholder="Ex.: NightBird7o" required />
+        </label>
+        <label>Idade do personagem
+          <input id="applicationAge" type="number" min="12" max="99" step="1" placeholder="Ex.: 17" required />
+        </label>
+        <label>Nacionalidade do personagem
+          <input id="applicationNationality" maxlength="32" autocomplete="off" placeholder="Ex.: Japonês" required />
+        </label>
+        <label>Altura do personagem
+          <input id="applicationHeight" type="number" min="1.40" max="2.20" step="0.01" placeholder="Ex.: 1.79" required />
+        </label>
+        <label>Estilo do 1º round
+          <input id="applicationStyle1" list="styleSuggestions" maxlength="32" autocomplete="off" placeholder="Ex.: Capoeira" required />
+        </label>
+        <label>Estilo do 2º round <span class="optional">opcional</span>
+          <input id="applicationStyle2" list="styleSuggestions" maxlength="32" autocomplete="off" placeholder="Deixe vazio para usar o mesmo estilo" />
+        </label>
+        <label class="rules-check">
+          <input id="applicationRules" type="checkbox" required />
+          <span>Li as regras e entendi que são necessários 2 pontos para vencer: 2×0 ou 2×1.</span>
+        </label>
+        <button class="btn btn-gold application-submit" id="applicationSubmit" type="submit">⚔️ Enviar candidatura</button>
+      </form>
+      <p class="application-message" id="applicationMessage"></p>
+    </section>
+
+    <datalist id="styleSuggestions">
+      <option value="Basic"></option>
+      <option value="Slugger"></option>
+      <option value="Muay Thai"></option>
+      <option value="Karate"></option>
+      <option value="Boxing"></option>
+      <option value="Hakari"></option>
+      <option value="Capoeira"></option>
+      <option value="Wrestling"></option>
+      <option value="Bulky"></option>
+      <option value="Kure"></option>
+      <option value="Sky Gaolang"></option>
+      <option value="Taekwondo"></option>
+      <option value="Variant"></option>
+      <option value="Wild"></option>
+      <option value="Wingchun"></option>
+    </datalist>
 
     <section class="viewer-content">
       <div class="status-grid">
@@ -36,20 +99,20 @@
       </div>
 
       <section class="qualifier-panel" id="qualifierPanel" hidden>
-        <div class="section-toolbar">
-          <div><h2>Classificatórias</h2><p>Etapas ampliadas que definem os 16 jogadores da tabela principal.</p></div>
+        <div class="section-toolbar compact">
+          <div><h2>Fase eliminatória</h2><p>Todos os grupos desta etapa possuem um mini placar de rounds.</p></div>
         </div>
         <div class="qualifier-rounds" id="qualifierRounds"></div>
       </section>
 
       <section class="bracket-panel">
         <div class="bracket-toolbar">
-          <div><h2>Tabela principal</h2><p id="bracketSummary">Aguardando o administrador criar a tabela.</p></div>
+          <div><h2>Chave principal</h2><p id="bracketSummary">Aguardando o administrador criar a tabela.</p></div>
           <button class="btn btn-small btn-ghost" type="button" id="printBtn">🖨 Imprimir / salvar PDF</button>
         </div>
         <div class="bracket-scroll" id="bracketScroll">
           <div class="bracket-empty" id="bracketEmpty">
-            <div><div class="empty-icon">⚔️</div><h3>A tabela ainda não foi publicada</h3><p>Assim que o organizador criar os confrontos, eles aparecerão aqui automaticamente. Não é necessário atualizar a página.</p></div>
+            <div><div class="empty-icon">⚔️</div><h3>A tabela ainda não foi publicada</h3><p>Assim que o organizador sortear os grupos, o placar aparecerá aqui automaticamente.</p></div>
           </div>
           <div class="bracket-stage" id="bracketStage" hidden><svg class="connections" id="connections" aria-hidden="true"></svg></div>
         </div>
@@ -57,11 +120,14 @@
     </section>
 
     <section class="rules-card">
-      <strong>Regras principais:</strong> cada confronto tem dois rounds; em caso de empate, acontece um terceiro round de desempate. Se um bug atrapalhar a luta, o round é reiniciado. Não é permitido treinar durante o torneio, todos devem assistir às demais lutas e, antes de cada confronto, os jogadores devem dar Dab juntos.
+      <h2>📜 Regras rápidas</h2>
+      <p><strong>Primeiro a 2 pontos vence.</strong> O resultado pode terminar em 2×0 ou 2×1. Se os dois vencerem um round, o terceiro decide.</p>
+      <p>Quem cadastrou dois estilos usa o primeiro no Round 1 e o segundo no Round 2. No desempate, escolhe um dos dois.</p>
+      <p>Se ocorrer um bug que atrapalhe a luta, o round é reiniciado. Não é permitido treinar durante o torneio, todos devem assistir às outras lutas e, antes do confronto, os jogadores devem dar Dab juntos.</p>
     </section>
 
     <div class="setup-warning hidden" id="setupWarning">
-      O placar ainda não foi conectado ao Firebase. O organizador precisa concluir a configuração descrita no README.md.
+      O placar ainda não foi conectado ao Firebase. O organizador precisa concluir a configuração.
     </div>
   </main>
 

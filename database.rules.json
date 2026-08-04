@@ -4,6 +4,13 @@
       "current": {
         ".read": true,
         ".write": "auth != null && auth.uid === 'COLE_SEU_UID_AQUI'"
+      },
+      "applications": {
+        ".read": "auth != null && auth.uid === 'COLE_SEU_UID_AQUI'",
+        "$applicationId": {
+          ".write": "(auth != null && auth.uid === 'COLE_SEU_UID_AQUI') || (!data.exists() && newData.exists() && root.child('gakuran/current/registrationOpen').val() === true)",
+          ".validate": "!newData.exists() || (newData.hasChildren(['fullName','roblox','age','nationality','height','styles']) && newData.child('fullName').isString() && newData.child('fullName').val().length >= 3 && newData.child('fullName').val().length <= 48 && newData.child('roblox').isString() && newData.child('roblox').val().length >= 2 && newData.child('roblox').val().length <= 48 && newData.child('age').isString() && newData.child('nationality').isString() && newData.child('nationality').val().length <= 32 && newData.child('height').isString() && newData.child('styles').hasChild('0') && newData.child('styles').child('0').isString())"
+        }
       }
     }
   }

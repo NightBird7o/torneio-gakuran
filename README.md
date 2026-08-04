@@ -1,127 +1,84 @@
-# Torneio Mensal de Gakuran — placar em tempo real
+# 〚東京〛M A N J I — Torneio de Gakuran V3
 
-Este pacote possui dois sites conectados ao mesmo placar:
+Atualização do site público e do painel administrativo.
 
-- `index.html`: placar público, somente leitura, para os jogadores.
-- `admin.html`: painel do organizador, protegido por login.
+## Principais mudanças
 
-A hospedagem pode ser feita gratuitamente no **GitHub Pages**. Como o GitHub Pages hospeda apenas arquivos estáticos, a sincronização em tempo real e a proteção contra alterações são feitas pelo **Firebase Realtime Database + Firebase Authentication**.
+- Mínimo reduzido para **4 participantes** e máximo mantido em **40**.
+- Site público agora também recebe **candidaturas**.
+- Ficha: nome e sobrenome, Roblox, idade, nacionalidade, altura e 1 ou 2 estilos.
+- Cada grupo/luta possui um **mini placar**.
+- O vencedor precisa marcar **2 pontos**: resultado 2×0 ou 2×1.
+- Round 1 usa o Estilo 1; Round 2 usa o Estilo 2 ou repete o primeiro; no Round 3 o jogador escolhe um dos estilos cadastrados.
+- Botão para desfazer o último round em caso de erro ou bug.
+- Candidaturas aparecem no painel do administrador para aprovar ou recusar.
+- O administrador pode abrir ou fechar as inscrições.
+- Novo visual preto, dourado, vermelho e rosa, com correntes e a identidade **〚東京〛M A N J I**.
 
-## O que mudou
+## Funcionamento das fases
 
-- A tabela principal sempre começa nas **oitavas de final** e segue para quartas, semifinais e decisões.
-- Com 20 a 40 jogadores, o sistema cria uma ou duas etapas de **classificatórias** para chegar aos 16 classificados.
-- As classificatórias aparecem em uma área ampla acima da tabela principal.
-- Toda alteração feita no painel administrativo aparece automaticamente no placar público.
-- O placar público não possui botões de edição.
-- As regras do Firebase permitem escrita somente para o UID do administrador.
+- **4 jogadores:** começa nas semifinais.
+- **5 a 8 jogadores:** começa nas quartas, com folgas quando necessário.
+- **9 jogadores:** uma luta de acesso define os 8 das quartas.
+- **10 a 16 jogadores:** começa nas oitavas, com folgas quando necessário.
+- **17 a 32 jogadores:** todos lutam na Fase Eliminatória; vencedores e melhores derrotados pelo placar completam os 16 das oitavas.
+- **34 a 40 jogadores:** todos lutam na Eliminatória 1; 32 avançam e disputam a Eliminatória Final; os 16 vencedores vão às oitavas.
 
-## 1. Criar o projeto no Firebase
+### Por que acima de 16 precisa ser uma quantidade par?
 
-1. Acesse `https://console.firebase.google.com/` e crie um projeto.
-2. Na tela inicial do projeto, clique no ícone **Web (`</>`)** e registre um aplicativo.
-3. O Firebase mostrará um objeto chamado `firebaseConfig`. Guarde esses dados.
+Em luta 1 contra 1, uma quantidade ímpar sempre deixaria alguém sem adversário. Como a regra escolhida exige que **todos participem da fase eliminatória**, o painel bloqueia o sorteio quando houver número ímpar acima de 16. Nesse caso, deixe uma pessoa como reserva ou aprove mais uma candidatura.
 
-Documentação oficial: `https://firebase.google.com/docs/web/setup`
+### Repescagem pelo placar
 
-## 2. Criar o Realtime Database
+Entre 17 e 31 jogadores, uma única rodada de lutas produz menos de 16 vencedores. Para chegar exatamente aos 16 das oitavas sem deixar ninguém sem lutar, o sistema completa as vagas com os melhores derrotados:
 
-1. No menu do Firebase, abra **Build > Realtime Database**.
-2. Clique em **Create Database**.
-3. Escolha uma região e conclua a criação.
-4. Não deixe o banco permanentemente em modo de teste; as regras seguras serão publicadas no passo 5.
+1. quem perdeu por 2×1 fica acima de quem perdeu por 2×0;
+2. empates restantes usam a ordem sorteada como desempate.
 
-Documentação oficial: `https://firebase.google.com/docs/database/web/start`
+## Atualizar o GitHub Pages
 
-## 3. Criar a conta do administrador
+Este pacote foi feito para substituir os arquivos do repositório existente.
 
-1. Abra **Build > Authentication**.
-2. Em **Sign-in method**, ative **Email/Password**.
-3. Abra a aba **Users** e adicione sua conta de administrador.
-4. Copie o **UID** dessa conta.
+**Importante: não apague nem substitua o seu `firebase-config.js` atual.** Ele contém a conexão que já está funcionando. O pacote inclui apenas `firebase-config.example.js` como exemplo.
 
-Não coloque sua senha em nenhum arquivo do GitHub. Ela será usada apenas na tela de login.
+Envie/substitua no repositório:
 
-Documentação oficial: `https://firebase.google.com/docs/auth/web/password-auth`
+- `index.html`
+- `admin.html`
+- `viewer.js`
+- `admin.js`
+- `tournament-core.js`
+- `tournament-ui.js`
+- `firebase-client.js`
+- `styles.css`
+- `database.rules.json`
+- pasta `assets`
+- `.nojekyll`
 
-## 4. Preencher `firebase-config.js`
+Depois do commit, o GitHub Pages atualizará automaticamente.
 
-Abra `firebase-config.js` e substitua todos os textos de exemplo pelos dados reais do seu aplicativo Firebase.
+## Publicar as novas regras do Firebase
 
-Também substitua:
+O formulário público precisa de novas regras para aceitar candidaturas sem permitir que visitantes mexam no placar.
 
-```js
-export const ADMIN_UID = "COLE_SEU_UID_AQUI";
-```
+1. Abra `database.rules.json`.
+2. Troque todas as ocorrências de `COLE_SEU_UID_AQUI` pelo UID do seu administrador.
+3. No Firebase Console, abra **Realtime Database > Rules**.
+4. Cole o conteúdo e clique em **Publish**.
 
-pelo UID copiado no passo anterior.
+As regras fazem o seguinte:
 
-O `firebaseConfig` pode ficar público. A segurança não depende de esconder esse objeto; depende das regras do banco e da autenticação.
+- qualquer pessoa pode ler o placar;
+- apenas o administrador pode alterar o torneio;
+- visitantes podem somente criar uma candidatura quando as inscrições estiverem abertas;
+- visitantes não podem ler, editar ou apagar candidaturas;
+- apenas o administrador vê e remove as candidaturas.
 
-## 5. Publicar as regras de segurança
+## Links
 
-1. Abra o arquivo `database.rules.json`.
-2. Troque `COLE_SEU_UID_AQUI` pelo mesmo UID usado em `firebase-config.js`.
-3. No Firebase, abra **Realtime Database > Rules**.
-4. Cole o conteúdo de `database.rules.json` e clique em **Publish**.
+- Site público: `https://nightbird7o.github.io/torneio-gakuran/`
+- Administração: `https://nightbird7o.github.io/torneio-gakuran/admin.html`
 
-As regras deixam o placar visível para todos, mas permitem alterações somente para a conta com o UID definido:
+## Segurança
 
-```json
-{
-  "rules": {
-    "gakuran": {
-      "current": {
-        ".read": true,
-        ".write": "auth != null && auth.uid === 'SEU_UID_REAL'"
-      }
-    }
-  }
-}
-```
-
-Documentação oficial: `https://firebase.google.com/docs/database/security`
-
-## 6. Hospedar no GitHub Pages
-
-1. Crie um repositório novo no GitHub.
-2. Envie **todos os arquivos desta pasta para a raiz do repositório**.
-3. No repositório, abra **Settings > Pages**.
-4. Em **Build and deployment**, escolha **Deploy from a branch**.
-5. Selecione a branch `main` e a pasta `/ (root)`.
-6. Salve e aguarde o GitHub publicar o endereço.
-
-Os endereços serão semelhantes a:
-
-- Placar público: `https://SEU-USUARIO.github.io/SEU-REPOSITORIO/`
-- Administração: `https://SEU-USUARIO.github.io/SEU-REPOSITORIO/admin.html`
-
-Compartilhe apenas o primeiro endereço com os jogadores. Mesmo que alguém descubra `admin.html`, não conseguirá salvar alterações sem entrar na conta cujo UID foi autorizado nas regras.
-
-## 7. Primeiro uso
-
-1. Abra `admin.html` pelo endereço do GitHub Pages.
-2. Entre com o e-mail e a senha cadastrados no Firebase Authentication.
-3. Cadastre de 20 a 40 jogadores.
-4. Clique em **Sortear e gerar tabela**.
-5. Abra `index.html` em outro aparelho ou aba para confirmar a atualização em tempo real.
-
-## Arquivos principais
-
-- `index.html` — página pública.
-- `viewer.js` — conexão e atualização da página pública.
-- `admin.html` — painel administrativo.
-- `admin.js` — cadastro, sorteio e resultados.
-- `tournament-core.js` — regras da chave eliminatória.
-- `tournament-ui.js` — desenho das classificatórias e da tabela.
-- `firebase-client.js` — conexão com Firebase.
-- `firebase-config.js` — dados do seu projeto e UID autorizado.
-- `database.rules.json` — regras de segurança para copiar no Firebase.
-- `styles.css` — aparência dos dois sites.
-
-## Observações de segurança
-
-- Nunca coloque a senha do administrador no código.
-- Use uma senha forte na conta do Firebase.
-- Mantenha o UID correto tanto em `firebase-config.js` quanto nas regras do banco.
-- O bloqueio real de escrita acontece no servidor do Firebase; esconder botões no site público é apenas uma camada visual.
+O formulário público pode receber spam. Para um torneio pequeno, aprovar manualmente já evita que inscrições falsas entrem na tabela. Para proteção mais forte, pode-se adicionar Firebase App Check em uma atualização futura.

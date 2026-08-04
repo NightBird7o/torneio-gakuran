@@ -2,20 +2,25 @@ import {
   MAX_PLAYERS,
   MIN_PLAYERS,
   buildTournament,
-  chooseWinner,
   createId,
   defaultState,
   escapeHtml,
   findPlayer,
+  normalizePlayer,
   normalizeState,
   playerLabel,
-  resetResults
+  playerStyles,
+  recordPoint,
+  resetResults,
+  undoLastPoint
 } from './tournament-core.js';
 import {
-  isConfigured,
+  deleteApplication,
   isAuthorizedUser,
+  isConfigured,
   login,
   logout,
+  observeApplications,
   observeAuth,
   observeTournament,
   saveCloudState
@@ -26,6 +31,11 @@ const els = {
   playerForm: document.getElementById('playerForm'),
   gakuranName: document.getElementById('gakuranName'),
   robloxName: document.getElementById('robloxName'),
+  playerAge: document.getElementById('playerAge'),
+  playerHeight: document.getElementById('playerHeight'),
+  playerNationality: document.getElementById('playerNationality'),
+  playerStyle1: document.getElementById('playerStyle1'),
+  playerStyle2: document.getElementById('playerStyle2'),
   playerCounter: document.getElementById('playerCounter'),
   minimumStatus: document.getElementById('minimumStatus'),
   playerList: document.getElementById('playerList'),
@@ -53,11 +63,17 @@ const els = {
   passwordInput: document.getElementById('passwordInput'),
   authMessage: document.getElementById('authMessage'),
   logoutBtn: document.getElementById('logoutBtn'),
-  setupWarning: document.getElementById('setupWarning')
+  setupWarning: document.getElementById('setupWarning'),
+  applicationCounter: document.getElementById('applicationCounter'),
+  applicationList: document.getElementById('applicationList'),
+  registrationToggleBtn: document.getElementById('registrationToggleBtn'),
+  registrationStatusText: document.getElementById('registrationStatusText')
 };
 
 let state = defaultState();
 let currentUser = null;
+let applications = [];
+let applicationsUnsubscribe = null;
 let cloudLoaded = false;
 let toastTimer = null;
 let saving = false;
@@ -67,10 +83,17 @@ const canAdmin = () => isConfigured && isAuthorizedUser(currentUser);
 const renderer = createTournamentRenderer({
   getState: () => state,
   canEdit: canAdmin,
-  onChooseWinner: async (matchId, playerId) => {
+  onRecordPoint: async (matchId, playerId, choices) => {
     await runWrite((draft) => {
-      if (!chooseWinner(draft, matchId, playerId)) throw new Error('Não foi possível registrar esse vencedor.');
-    }, `${playerLabel(findPlayer(state, playerId))} avançou de fase.`);
+      if (!recordPoint(draft, matchId, playerId, choices)) {
+        throw new Error('Não foi possível registrar esse ponto. Confira se o grupo já terminou.');
+      }
+    }, `${playerLabel(findPlayer(state, playerId))} marcou um ponto.`);
+  },
+  onUndoPoint: async (matchId) => {
+    await runWrite((draft) => {
+      if (!undoLastPoint(draft, matchId)) throw new Error('Não existe round para desfazer.');
+    }, 'O último round foi removido.');
   },
   elements: els
 });
@@ -79,7 +102,7 @@ function showToast(message, type = 'normal') {
   clearTimeout(toastTimer);
   els.toast.textContent = message;
   els.toast.className = `toast show${type === 'error' ? ' error' : ''}`;
-  toastTimer = setTimeout(() => { els.toast.className = 'toast'; }, 3000);
+  toastTimer = setTimeout(() => { els.toast.className = 'toast'; }, 3200);
 }
 
 function setConnection(status, type = 'normal') {
@@ -87,41 +110,107 @@ function setConnection(status, type = 'normal') {
   els.liveDot.className = `live-dot${type === 'online' ? ' online' : type === 'error' ? ' error' : ''}`;
 }
 
+function validRoster() {
+  const count = state.players.length;
+  if (count < MIN_PLAYERS || count > MAX_PLAYERS) return false;
+  if (count > 16 && count % 2 !== 0) return false;
+  return true;
+}
+
 function setControls() {
   const enabled = canAdmin() && !saving;
   document.querySelectorAll('[data-admin-control]').forEach((control) => {
     control.disabled = !enabled;
   });
-  els.generateBtn.disabled = !enabled || state.players.length < MIN_PLAYERS || state.players.length > MAX_PLAYERS;
+  els.generateBtn.disabled = !enabled || !validRoster();
+  els.registrationToggleBtn.disabled = !enabled;
+}
+
+function renderRegistrationControl() {
+  const open = state.registrationOpen !== false;
+  els.registrationToggleBtn.textContent = open ? '🔒 Fechar inscrições' : '🔓 Abrir inscrições';
+  els.registrationToggleBtn.className = `btn wide ${open ? 'btn-danger' : 'btn-gold'}`;
+  els.registrationStatusText.textContent = open
+    ? 'Jogadores podem enviar candidaturas pelo site público.'
+    : 'O formulário público está bloqueado para novas candidaturas.';
+}
+
+function renderApplications() {
+  els.applicationCounter.textContent = `${applications.length} pendente${applications.length === 1 ? '' : 's'}`;
+  if (!canAdmin()) {
+    els.applicationList.innerHTML = '<div class="empty-players">Entre como administrador para ver as candidaturas.</div>';
+    return;
+  }
+  if (!applications.length) {
+    els.applicationList.innerHTML = '<div class="empty-players">Nenhuma candidatura pendente.</div>';
+    return;
+  }
+
+  els.applicationList.innerHTML = applications.map((application) => {
+    const styles = Array.isArray(application.styles) ? application.styles.filter(Boolean) : [];
+    return `
+      <article class="application-card" data-application-id="${escapeHtml(application.id)}">
+        <div class="application-card-head">
+          <strong>${escapeHtml(application.fullName || 'Sem nome')}</strong>
+          <span>${escapeHtml(application.roblox || 'Sem Roblox')}</span>
+        </div>
+        <p>${escapeHtml(application.age || '?')} anos • ${escapeHtml(application.nationality || '?')} • ${escapeHtml(application.height || '?')} m</p>
+        <p class="application-styles">🥋 ${escapeHtml(styles.join(' + ') || 'Estilo não informado')}</p>
+        <div class="application-actions">
+          <button class="btn btn-small btn-gold" type="button" data-action="approve-application">✓ Aprovar</button>
+          <button class="btn btn-small btn-danger" type="button" data-action="reject-application">Recusar</button>
+        </div>
+      </article>
+    `;
+  }).join('');
 }
 
 function renderPlayers() {
   const count = state.players.length;
   els.playerCounter.textContent = `${count}/${MAX_PLAYERS}`;
-  els.minimumStatus.textContent = count >= MIN_PLAYERS ? 'Quantidade válida' : `Faltam ${MIN_PLAYERS - count}`;
-  els.minimumStatus.style.color = count >= MIN_PLAYERS ? '#79e3b2' : '';
+
+  if (count < MIN_PLAYERS) {
+    els.minimumStatus.textContent = `Faltam ${MIN_PLAYERS - count}`;
+    els.minimumStatus.className = 'counter warning';
+  } else if (count > 16 && count % 2 !== 0) {
+    els.minimumStatus.textContent = 'Acima de 16: precisa ser par';
+    els.minimumStatus.className = 'counter warning';
+  } else {
+    els.minimumStatus.textContent = 'Quantidade válida';
+    els.minimumStatus.className = 'counter valid';
+  }
 
   if (!count) {
-    els.playerList.innerHTML = '<div class="empty-players">Nenhum jogador cadastrado.</div>';
+    els.playerList.innerHTML = '<div class="empty-players">Nenhum jogador aprovado.</div>';
     setControls();
     return;
   }
 
   const disabled = canAdmin() ? '' : 'disabled';
-  state.players.forEach((player) => {
-    if (!player.id) player.id = createId('player');
-  });
+  state.players = state.players.map(normalizePlayer).filter(Boolean);
 
-  els.playerList.innerHTML = state.players.map((player, index) => `
-    <div class="player-item" data-player-id="${escapeHtml(player.id)}">
-      <div class="player-number">${index + 1}</div>
-      <div class="player-inputs">
-        <input class="edit-gakuran" value="${escapeHtml(player.gakuran)}" maxlength="32" aria-label="Nome no Gakuran de ${escapeHtml(playerLabel(player))}" ${disabled} />
-        <input class="edit-roblox" value="${escapeHtml(player.roblox)}" maxlength="40" placeholder="Usuário/ID do Roblox" aria-label="Usuário do Roblox de ${escapeHtml(playerLabel(player))}" ${disabled} />
-      </div>
-      <button class="icon-btn remove-player" type="button" title="Remover jogador" aria-label="Remover ${escapeHtml(playerLabel(player))}" ${disabled}>×</button>
-    </div>
-  `).join('');
+  els.playerList.innerHTML = state.players.map((player, index) => {
+    const styles = playerStyles(player);
+    return `
+      <article class="player-item expanded" data-player-id="${escapeHtml(player.id)}">
+        <div class="player-number">${index + 1}</div>
+        <div class="player-edit-grid">
+          <input data-field="fullName" value="${escapeHtml(player.fullName)}" maxlength="48" aria-label="Nome" ${disabled} />
+          <input data-field="roblox" value="${escapeHtml(player.roblox)}" maxlength="48" aria-label="Roblox" ${disabled} />
+          <div class="player-mini-fields">
+            <input data-field="age" type="number" min="12" max="99" value="${escapeHtml(player.age)}" aria-label="Idade" ${disabled} />
+            <input data-field="height" type="number" min="1.40" max="2.20" step="0.01" value="${escapeHtml(player.height)}" aria-label="Altura" ${disabled} />
+          </div>
+          <input data-field="nationality" value="${escapeHtml(player.nationality)}" maxlength="32" aria-label="Nacionalidade" ${disabled} />
+          <div class="player-mini-fields">
+            <input data-field="style1" list="styleSuggestions" value="${escapeHtml(styles[0] || '')}" maxlength="32" aria-label="Estilo 1" ${disabled} />
+            <input data-field="style2" list="styleSuggestions" value="${escapeHtml(styles[1] || '')}" maxlength="32" aria-label="Estilo 2" placeholder="2º estilo" ${disabled} />
+          </div>
+        </div>
+        <button class="icon-btn remove-player" type="button" title="Remover jogador" aria-label="Remover ${escapeHtml(playerLabel(player))}" ${disabled}>×</button>
+      </article>
+    `;
+  }).join('');
   setControls();
 }
 
@@ -136,7 +225,7 @@ function renderAuth() {
   } else {
     els.setupWarning.classList.add('hidden');
     if (!currentUser) {
-      els.authMessage.textContent = 'Somente a conta autorizada nas regras do Firebase pode alterar o placar.';
+      els.authMessage.textContent = 'Somente a conta autorizada pode alterar o placar.';
     } else if (!authorized) {
       els.authMessage.textContent = 'Esta conta entrou, mas não possui o UID autorizado.';
     }
@@ -145,6 +234,8 @@ function renderAuth() {
 }
 
 function renderAll() {
+  renderRegistrationControl();
+  renderApplications();
   renderPlayers();
   renderer.render();
   renderAuth();
@@ -153,7 +244,7 @@ function renderAll() {
 
 async function runWrite(mutator, successMessage) {
   if (!canAdmin()) {
-    showToast('Entre com a conta de administrador para alterar o placar.', 'error');
+    showToast('Entre com a conta de administrador para alterar o torneio.', 'error');
     return false;
   }
   if (saving) return false;
@@ -179,7 +270,20 @@ async function runWrite(mutator, successMessage) {
 
 function rosterChangeWillReset() {
   if (!state.tournament) return true;
-  return window.confirm('Essa alteração apagará a tabela e os resultados atuais. Continuar?');
+  return window.confirm('Essa alteração apagará a tabela e todos os placares atuais. Continuar?');
+}
+
+function playerFromApplication(application) {
+  return normalizePlayer({
+    id: createId('player'),
+    fullName: application.fullName,
+    roblox: application.roblox,
+    age: application.age,
+    nationality: application.nationality,
+    height: application.height,
+    styles: application.styles,
+    applicationId: application.id
+  });
 }
 
 els.loginForm.addEventListener('submit', async (event) => {
@@ -189,7 +293,7 @@ els.loginForm.addEventListener('submit', async (event) => {
     await login(els.emailInput.value.trim(), els.passwordInput.value);
     els.loginForm.reset();
   } catch (error) {
-    els.authMessage.textContent = 'Não foi possível entrar. Confira o e-mail, a senha e a configuração do Firebase.';
+    els.authMessage.textContent = 'Não foi possível entrar. Confira o e-mail e a senha.';
     showToast(error?.message || 'Erro no login.', 'error');
   }
 });
@@ -199,20 +303,78 @@ els.logoutBtn.addEventListener('click', async () => {
   showToast('Você saiu da administração.');
 });
 
+els.registrationToggleBtn.addEventListener('click', async () => {
+  await runWrite((draft) => {
+    draft.registrationOpen = draft.registrationOpen === false;
+  }, state.registrationOpen === false ? 'Inscrições abertas.' : 'Inscrições fechadas.');
+});
+
+els.applicationList.addEventListener('click', async (event) => {
+  const card = event.target.closest('[data-application-id]');
+  if (!card || !canAdmin()) return;
+  const application = applications.find((item) => item.id === card.dataset.applicationId);
+  if (!application) return;
+
+  if (event.target.closest('[data-action="approve-application"]')) {
+    if (state.players.length >= MAX_PLAYERS) {
+      showToast('O limite é de 40 participantes.', 'error');
+      return;
+    }
+    if (!rosterChangeWillReset()) return;
+    const saved = await runWrite((draft) => {
+      draft.tournament = null;
+      draft.players.push(playerFromApplication(application));
+    }, `${application.fullName} foi aprovado.`);
+    if (saved) {
+      try {
+        await deleteApplication(application.id);
+      } catch {
+        showToast('Jogador aprovado, mas a candidatura não pôde ser removida da caixa.', 'error');
+      }
+    }
+    return;
+  }
+
+  if (event.target.closest('[data-action="reject-application"]')) {
+    if (!window.confirm(`Recusar a candidatura de ${application.fullName || 'este jogador'}?`)) return;
+    try {
+      await deleteApplication(application.id);
+      showToast('Candidatura recusada.');
+    } catch (error) {
+      showToast(error?.message || 'Não foi possível recusar.', 'error');
+    }
+  }
+});
+
 els.playerForm.addEventListener('submit', async (event) => {
   event.preventDefault();
-  const gakuran = els.gakuranName.value.trim();
-  const roblox = els.robloxName.value.trim();
-  if (!gakuran || !rosterChangeWillReset()) return;
+  if (!rosterChangeWillReset()) return;
   if (state.players.length >= MAX_PLAYERS) {
     showToast('O limite é de 40 participantes.', 'error');
     return;
   }
 
+  const style1 = els.playerStyle1.value.trim();
+  const style2 = els.playerStyle2.value.trim();
+  if (style2 && style2.toLowerCase() === style1.toLowerCase()) {
+    showToast('O segundo estilo precisa ser diferente ou ficar vazio.', 'error');
+    return;
+  }
+
+  const player = normalizePlayer({
+    id: createId('player'),
+    fullName: els.gakuranName.value.trim(),
+    roblox: els.robloxName.value.trim(),
+    age: els.playerAge.value.trim(),
+    height: Number(els.playerHeight.value).toFixed(2),
+    nationality: els.playerNationality.value.trim(),
+    styles: [style1, style2].filter(Boolean)
+  });
+
   const saved = await runWrite((draft) => {
     draft.tournament = null;
-    draft.players.push({ id: createId('player'), gakuran, roblox });
-  }, 'Jogador adicionado e placar atualizado.');
+    draft.players.push(player);
+  }, 'Jogador adicionado.');
 
   if (saved) {
     els.playerForm.reset();
@@ -225,15 +387,23 @@ els.addExamplesBtn.addEventListener('click', async () => {
   const remaining = MAX_PLAYERS - state.players.length;
   const amount = Math.min(Math.max(MIN_PLAYERS - state.players.length, 0), remaining);
   if (amount <= 0) {
-    showToast('A lista já tem pelo menos 20 jogadores.');
+    showToast('A lista já possui pelo menos 4 jogadores.');
     return;
   }
-
+  const exampleStyles = ['Capoeira', 'Kure', 'Boxing', 'Muay Thai'];
   await runWrite((draft) => {
     draft.tournament = null;
     for (let i = 0; i < amount; i += 1) {
       const number = draft.players.length + 1;
-      draft.players.push({ id: createId('player'), gakuran: `Jogador ${number}`, roblox: `Roblox_${number}` });
+      draft.players.push(normalizePlayer({
+        id: createId('player'),
+        fullName: `Jogador ${number}`,
+        roblox: `Roblox_${number}`,
+        age: '17',
+        height: (1.70 + (number % 10) / 100).toFixed(2),
+        nationality: 'Japonês',
+        styles: [exampleStyles[number % exampleStyles.length]]
+      }));
     }
   }, `${amount} jogadores de teste foram adicionados.`);
 });
@@ -247,7 +417,7 @@ els.playerList.addEventListener('click', async (event) => {
   await runWrite((draft) => {
     draft.tournament = null;
     draft.players = draft.players.filter((player) => player.id !== playerId);
-  }, 'Jogador removido e placar atualizado.');
+  }, 'Jogador removido.');
 });
 
 els.playerList.addEventListener('change', async (event) => {
@@ -255,23 +425,48 @@ els.playerList.addEventListener('change', async (event) => {
   const item = event.target.closest('[data-player-id]');
   if (!item) return;
   const playerId = item.dataset.playerId;
-  const gakuranValue = item.querySelector('.edit-gakuran')?.value.trim() || '';
-  const robloxValue = item.querySelector('.edit-roblox')?.value.trim() || '';
+  if (state.tournament && !rosterChangeWillReset()) {
+    renderAll();
+    return;
+  }
+
+  const values = {};
+  item.querySelectorAll('[data-field]').forEach((input) => {
+    values[input.dataset.field] = input.value.trim();
+  });
+  if (!values.fullName || !values.style1) {
+    showToast('Nome e Estilo 1 são obrigatórios.', 'error');
+    renderAll();
+    return;
+  }
+  if (values.style2 && values.style2.toLowerCase() === values.style1.toLowerCase()) {
+    showToast('Os dois estilos precisam ser diferentes.', 'error');
+    renderAll();
+    return;
+  }
 
   await runWrite((draft) => {
+    draft.tournament = null;
     const player = findPlayer(draft, playerId);
     if (!player) throw new Error('Jogador não encontrado.');
-    player.gakuran = gakuranValue;
-    player.roblox = robloxValue;
-  }, 'Nome atualizado no placar.');
+    Object.assign(player, {
+      fullName: values.fullName,
+      gakuran: values.fullName,
+      roblox: values.roblox,
+      age: values.age,
+      height: values.height,
+      nationality: values.nationality,
+      styles: [values.style1, values.style2].filter(Boolean)
+    });
+  }, 'Ficha do jogador atualizada.');
 });
 
 els.generateBtn.addEventListener('click', async () => {
-  if (state.players.length < MIN_PLAYERS || state.players.length > MAX_PLAYERS) {
-    showToast('Cadastre entre 20 e 40 jogadores.', 'error');
+  if (!validRoster()) {
+    showToast('Use de 4 a 40 participantes. Acima de 16, a quantidade precisa ser par.', 'error');
     return;
   }
-  if (state.tournament && !window.confirm('Sortear novamente apagará todos os resultados. Continuar?')) return;
+  if (state.tournament && !window.confirm('Sortear novamente apagará todos os placares. Continuar?')) return;
 
   const saved = await runWrite((draft) => {
     draft.tournament = buildTournament(draft.players);
@@ -285,8 +480,8 @@ els.resetResultsBtn.addEventListener('click', async () => {
     showToast('Ainda não existe uma tabela.', 'error');
     return;
   }
-  if (!window.confirm('Deseja zerar todos os resultados sem alterar os confrontos?')) return;
-  await runWrite((draft) => resetResults(draft), 'Todos os resultados foram zerados.');
+  if (!window.confirm('Deseja zerar todos os placares sem mudar os confrontos?')) return;
+  await runWrite((draft) => resetResults(draft), 'Todos os placares foram zerados.');
 });
 
 els.clearAllBtn.addEventListener('click', async () => {
@@ -300,10 +495,23 @@ els.clearAllBtn.addEventListener('click', async () => {
 
 els.printBtn.addEventListener('click', () => window.print());
 
-observeAuth(async (user) => {
+observeAuth((user) => {
   currentUser = user;
+  if (canAdmin() && !applicationsUnsubscribe) {
+    applicationsUnsubscribe = observeApplications(
+      (items) => {
+        applications = items;
+        renderApplications();
+      },
+      (error) => showToast(error?.message || 'Não foi possível carregar as candidaturas.', 'error')
+    );
+  } else if (!canAdmin() && applicationsUnsubscribe) {
+    applicationsUnsubscribe();
+    applicationsUnsubscribe = null;
+    applications = [];
+  }
+
   if (user && !isAuthorizedUser(user)) {
-    renderAuth();
     showToast('Esta conta não está autorizada a administrar o torneio.', 'error');
   }
   renderAll();
