@@ -3,7 +3,7 @@ export const SITE_CONFIG = Object.freeze({
   shortName: 'DIVINA TOKYO',
   // Depois, troque pela URL pública do serviço do Amateru no Railway.
   // Ex.: https://amateru-divina-tokyo.up.railway.app
-  apiBaseUrl: 'COLE_A_URL_DA_API_AQUI',
+  apiBaseUrl: 'https://gakuran-discord-bot-production.up.railway.app',
   discordInviteUrl: '',
   tokenStorageKey: 'divinaTokyoSessionV5',
 });
