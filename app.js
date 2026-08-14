@@ -1,4 +1,4 @@
-import { SITE_CONFIG, isApiConfigured } from './site-config.js';
+import { SITE_CONFIG, isApiConfigured } from './site-config.js?v=6';
 import { Api, consumeTokenFromHash, getToken, setToken, startDiscordLogin } from './api.js';
 import {
   buildTournament,
