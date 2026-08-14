@@ -10,5 +10,5 @@ export const SITE_CONFIG = Object.freeze({
 
 export function isApiConfigured() {
   return /^https:\/\//i.test(SITE_CONFIG.apiBaseUrl)
-    && !SITE_CONFIG.apiBaseUrl.includes('https://gakuran-discord-bot-production.up.railway.app');
+    && !SITE_CONFIG.apiBaseUrl.includes('COLE_A_URL_DA_API_AQUI');
 }
